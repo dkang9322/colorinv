@@ -287,7 +287,7 @@ module zbt_6111_sample(beep, audio_reset_b,
    assign ram0_bwe_b = 4'h0; 
 
 /**********/
-
+   // needs to Change for processing
    assign ram1_data = 36'hZ; 
    assign ram1_address = 19'h0;
    assign ram1_adv_ld = 1'b0;
@@ -429,6 +429,11 @@ module zbt_6111_sample(beep, audio_reset_b,
    wire hsync,vsync,blank;
    xvga xvga1(clk,hcount,vcount,hsync,vsync,blank);
 
+   //----------------------------------------------------------------------------------------------------
+   //----------------------------------------------------------------------------------------------------
+   // Storage and Read part 1 (NTSC input -> ZBT 0)
+   //----------------------------------------------------------------------------------------------------
+   //----------------------------------------------------------------------------------------------------
    // wire up to ZBT ram
 
    wire [35:0] vram_write_data;
@@ -447,15 +452,20 @@ module zbt_6111_sample(beep, audio_reset_b,
     -------------------------------------------------------------
     Adding RGB color
     */
+   wire [18:0] sup_addr1; // Address to read from ZBT0, function of hcount/vcount
+   wire [17:0] pwrite_data; // Value to write, flipped RGB values
+   wire        n_we; //New Write_Enable signal for ZBT1
+   wire [18:0] wsup_addr1; // Address to write to ZBT1, function of hcount/vcount (same as sup_addr1)
 
-   //Potential Editing Needed
-   // generate pixel value from reading ZBT memory
-   wire [17:0] 	vr_pixel;
-   wire [18:0] 	vram_addr1;
+   // My guess: n_we = we delayed by appropriate processing latency
+   // wsup_addr1 = sup_addr1 for most cases (will need to account for processing latency)
+   // write_data is simple
+   
+   // Needs Implementation
+   supervisor sup(reset,clk,hcount,vcount,pwrite_data,
+		    sup_addr1,vram_read_data, n_we, wsup_addr1);
 
-   vram_display vd1(reset,clk,hcount,vcount,vr_pixel,
-		    vram_addr1,vram_read_data);
-
+   
    // ADV7185 NTSC decoder interface code
    // adv7185 initialization module
    adv7185init adv7185(.reset(reset), .clock_27mhz(clock_27mhz), 
@@ -482,7 +492,9 @@ module zbt_6111_sample(beep, audio_reset_b,
    ntsc_to_zbt n2z (clk, tv_in_line_clock1, fvh, dv, ycrcb,
 		    ntsc_addr, ntsc_data, ntsc_we, switch[6]);
 
+   //---------------------------------------------
    // code to write pattern to ZBT memory
+   //---------------------------------------------
    reg [31:0] 	count;
    always @(posedge clk) count <= reset ? 0 : count + 1;
 
@@ -499,16 +511,28 @@ module zbt_6111_sample(beep, audio_reset_b,
    wire [18:0] 	write_addr = sw_ntsc ? ntsc_addr : vram_addr2;
    wire [35:0] 	write_data = sw_ntsc ? ntsc_data : vpat;
 
-//   wire 	write_enable = sw_ntsc ? (my_we & ntsc_we) : my_we;
-//   assign 	vram_addr = write_enable ? write_addr : vram_addr1;
-//   assign 	vram_we = write_enable;
 
-   assign 	vram_addr = my_we ? write_addr : vram_addr1;
+   // needs to Change for processing (vram_addr1 changed to sup_addr1)
+   assign 	vram_addr = my_we ? write_addr : sup_addr1;
    assign 	vram_we = my_we;
    assign 	vram_write_data = write_data;
 
    // select output pixel data
 
+   //----------------------------------------------------------------------------------------------------
+   //----------------------------------------------------------------------------------------------------
+   // Storage and Read part 2 (from Sup to ZBT1)
+   //----------------------------------------------------------------------------------------------------
+   //----------------------------------------------------------------------------------------------------
+   //Potential Editing Needed
+   // generate pixel value from reading ZBT memory
+   wire [17:0] 	vr_pixel;
+   wire [18:0] 	vram_addr1;
+
+   vram_display vd1(reset,clk,hcount,vcount,vr_pixel,
+		    vram_addr1,vram_read_data);
+
+   
    //Potential Editing Needed
    reg [17:0] 	pixel;
    reg 	b,hs,vs;
