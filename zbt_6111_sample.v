@@ -532,12 +532,15 @@ module zbt_6111_sample(beep, audio_reset_b,
 
    //ZBT bank 1 we/write data
    //Note we are using the same write_addr/write_data as ZBT bank 0
-   //if switch[3]
+   //Supervisor needs to generate the appropriate write_addr and appropriate delay
    wire 	my_we1 = switch[3] ? sw_ntsc ? (hcount[0]==1'd1) : blank : 0;
 
    assign vram_addr1 = my_we1 ? write_addr : vram_vga_addr;
    assign vram_we1 = my_we1;
    assign vram_write_data1 = write_data;
+   
+   //To use Color Inversion, uncomment the following line
+   //assign vram_write_data1 = ~write_data;
    
 
    // select output pixel data
